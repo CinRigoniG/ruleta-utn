@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruleta del Código</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=JetBrains+Mono:wght@500;700&family=Figtree:wght@400;600&display=swap">
+<style>
+/* Layout: arcade stand — wheel left, result card right, stacks on narrow screens. Single dark look by choice (projected at a fair). */
+:root{
+  --bg:#141a3a; --bg2:#1d2550; --ink:#f4f1ff; --muted:#a9b0dc;
+  --amber:#ffbf3c; --coral:#ff6b5b; --mint:#3ee0b0; --sky:#5aa9ff; --violet:#a07cff; --pink:#ff7ac6; --lime:#c4ef4f; --orange:#ff9147;
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --body:"Figtree",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0}
+*{box-sizing:border-box}
+body{background:radial-gradient(ellipse at 30% 20%,var(--bg2),var(--bg) 65%);background-color:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;padding-inline:16px;overflow-x:hidden}
+.wrap{max-width:1280px;margin:0 auto;padding-block:20px 28px;display:flex;flex-direction:column;gap:18px;min-height:100%}
+header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand small{display:block;font-family:var(--mono);font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber)}
+.brand h1{margin:2px 0 0;font-family:var(--display);font-weight:800;font-size:clamp(1.6rem,3.4vw,2.8rem);line-height:1.05;text-wrap:balance}
+.brand h1 span{color:var(--mint)}
+.tools{display:flex;gap:10px;align-items:center}
+.pill{font-family:var(--mono);font-size:.85rem;color:var(--muted);border:1px solid #ffffff22;border-radius:999px;padding:6px 12px;font-variant-numeric:tabular-nums}
+.ghost{font:600 .9rem var(--body);color:var(--ink);background:#ffffff12;border:1px solid #ffffff2a;border-radius:10px;padding:8px 12px;cursor:pointer}
+.ghost:hover{background:#ffffff22}
+main{flex:1;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:clamp(18px,3vw,48px);align-items:center}
+@media (max-width:860px){main{grid-template-columns:1fr}}
+.stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:18px}
+.wheelbox{position:relative;width:min(100%,600px);aspect-ratio:1;max-width:100%}
+canvas{width:100%;height:100%;display:block}
+.pointer{position:absolute;left:50%;top:-6px;transform:translateX(-50%);width:0;height:0;border-left:22px solid transparent;border-right:22px solid transparent;border-top:44px solid var(--ink);filter:drop-shadow(0 4px 6px #0008);z-index:2}
+.hub{position:absolute;inset:0;margin:auto;width:20%;height:20%;border-radius:50%;background:var(--bg);border:5px solid var(--ink);display:grid;place-items:center;font:700 clamp(.9rem,2.4vw,1.5rem) var(--mono);color:var(--amber);cursor:pointer}
+.spin{font:800 clamp(1.2rem,2.6vw,1.6rem) var(--display);letter-spacing:.02em;color:#1a1530;background:var(--amber);border:0;border-radius:16px;padding:16px 40px;cursor:pointer;box-shadow:0 6px 0 #c98a12;transition:transform .08s}
+.spin:active{transform:translateY(4px);box-shadow:0 2px 0 #c98a12}
+.spin:disabled{opacity:.55;cursor:wait}
+.hint{font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+button:focus-visible,.hub:focus-visible{outline:3px solid var(--mint);outline-offset:3px}
+
+.card{background:#0c1130cc;border:1px solid #ffffff1f;border-radius:22px;padding:clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:16px;min-width:0;box-shadow:0 20px 50px #0006}
+.chip{align-self:flex-start;font:700 .82rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:#14102a;padding:6px 12px;border-radius:8px;background:var(--c,var(--amber))}
+.card h2{margin:0;font-family:var(--display);font-weight:800;font-size:clamp(1.5rem,3vw,2.4rem);line-height:1.15;text-wrap:balance}
+.card p{margin:0;font-size:clamp(1.05rem,1.8vw,1.3rem);line-height:1.5;color:#dfe1f7;max-width:60ch}
+pre{margin:0;background:#070a1f;border:1px solid #ffffff18;border-left:4px solid var(--c,var(--amber));border-radius:12px;padding:18px 20px;overflow-x:auto;font:500 clamp(1rem,1.9vw,1.35rem)/1.55 var(--mono);color:#e9ecff}
+pre .k{color:var(--pink)} pre .s{color:var(--lime)} pre .n{color:var(--orange)} pre .f{color:var(--sky)}
+.reveal{align-self:flex-start;font:700 1rem var(--body);background:transparent;color:var(--ink);border:2px solid var(--c,var(--amber));border-radius:12px;padding:10px 18px;cursor:pointer}
+.reveal:hover{background:#ffffff10}
+.answer{background:#ffffff0d;border-radius:14px;padding:16px 18px;border:1px dashed var(--c,var(--amber))}
+.answer strong{display:block;font:700 .8rem var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--c,var(--amber));margin-bottom:6px}
+.answer div{font-size:clamp(1.05rem,1.8vw,1.3rem);line-height:1.5}
+.pop{animation:pop .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(.92);opacity:.3}to{transform:none;opacity:1}}
+footer{display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;font-family:var(--mono);font-size:.8rem;color:var(--muted)}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:10;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
+</style>
+</head>
+<body>
+
+<canvas id="confetti"></canvas>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <small>UTN FRM · Tecnicatura Universitaria en Programación</small>
+      <h1>Ruleta del <span>Código</span></h1>
+    </div>
+    <div class="tools">
+      <span class="pill" id="count">0 giros</span>
+      <button class="ghost" id="sound" aria-pressed="true">Sonido: sí</button>
+      <button class="ghost" id="fs">Pantalla completa</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage">
+      <div class="wheelbox">
+        <div class="pointer" aria-hidden="true"></div>
+        <canvas id="wheel" width="1200" height="1200" aria-label="Ruleta con ocho categorías"></canvas>
+        <div class="hub" id="hub" tabindex="0" role="button" aria-label="Girar">&lt;/&gt;</div>
+      </div>
+      <button class="spin" id="spin">¡Girá la ruleta!</button>
+      <span class="hint">Tecla espacio para girar · Enter para ver la respuesta</span>
+    </section>
+
+    <section class="card" id="card" aria-live="polite">
+      <span class="chip" style="--c:var(--amber)">Cómo se juega</span>
+      <h2>Girá, respondé y descubrí qué se siente programar</h2>
+      <p>La ruleta tiene desafíos de código, preguntas de lógica, datos curiosos y retos rápidos. No hace falta saber programar: en la carrera aprendés todo esto desde cero.</p>
+      <pre><span class="k">while</span> te_gusta_resolver_problemas:
+    <span class="f">aprender</span>(<span class="s">"programación"</span>)</pre>
+    </section>
+  </main>
+
+  <footer>
+    <span>Tecnicatura Universitaria en Programación · Presencial y a distancia</span>
+    <span>Ningún estudiante fue dañado al hacer este programa</span>
+  </footer>
+</div>
+
+<script>
+const C = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const CATS = [
+  {id:"salida", label:"¿Qué imprime?", color:"--amber"},
+  {id:"bug",    label:"Cazá el bug",   color:"--coral"},
+  {id:"vf",     label:"V o F",         color:"--mint"},
+  {id:"lang",   label:"¿Qué lenguaje?",color:"--sky"},
+  {id:"logica", label:"Lógica",        color:"--violet"},
+  {id:"compu",  label:"Pensá en código",color:"--pink"},
+  {id:"dato",   label:"Dato curioso",  color:"--lime"},
+  {id:"reto",   label:"Reto rápido",   color:"--orange"},
+];
+
+const BANK = {
+  salida:[
+    {q:"¿Qué muestra en pantalla?", code:'<span class="f">print</span>(<span class="s">"hola"</span> * <span class="n">3</span>)', a:"<code>holaholahola</code>. Multiplicar un texto lo repite."},
+    {q:"¿Qué muestra en pantalla?", code:'notas = [<span class="n">7</span>, <span class="n">9</span>, <span class="n">10</span>]\n<span class="f">print</span>(<span class="f">len</span>(notas) + notas[-<span class="n">1</span>])', a:"<code>13</code>. Hay 3 notas y la última (índice -1) es 10."},
+    {q:"¿Qué muestra en pantalla?", code:'<span class="f">print</span>(<span class="n">10</span> // <span class="n">3</span>, <span class="n">10</span> % <span class="n">3</span>)', a:"<code>3 1</code>. División entera y resto: 10 = 3 × 3 + 1."},
+    {q:"¿Qué muestra en pantalla?", code:'ciudad = <span class="s">"Mendoza"</span>\n<span class="f">print</span>(ciudad[<span class="n">0</span>:<span class="n">3</span>])', a:"<code>Men</code>. Toma las letras de las posiciones 0, 1 y 2."},
+    {q:"¿Qué muestra en pantalla?", code:'<span class="f">print</span>(<span class="f">sum</span>(<span class="f">range</span>(<span class="n">5</span>)))', a:"<code>10</code>. Suma 0 + 1 + 2 + 3 + 4."},
+    {q:"¿Qué muestra en pantalla?", code:'<span class="f">print</span>(<span class="s">"UTN"</span>.<span class="f">lower</span>()[::-<span class="n">1</span>])', a:"<code>ntu</code>. Pasa a minúsculas y lo da vuelta."},
+  ],
+  bug:[
+    {q:"Este código no anda. ¿Dónde está el error?", code:'<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">3</span>)\n    <span class="f">print</span>(i)', a:"Faltan los dos puntos al final del <code>for</code>."},
+    {q:"Le sumamos 1 a la edad y explota. ¿Por qué?", code:'edad = <span class="f">input</span>(<span class="s">"Edad: "</span>)\n<span class="f">print</span>(edad + <span class="n">1</span>)', a:"<code>input</code> devuelve texto. Hay que convertirlo: <code>int(edad) + 1</code>."},
+    {q:"¿Por qué falla?", code:'lista = [<span class="n">1</span>, <span class="n">2</span>, <span class="n">3</span>]\n<span class="f">print</span>(lista[<span class="n">3</span>])', a:"Las posiciones van de 0 a 2. La posición 3 no existe."},
+    {q:"Encontrá el error.", code:'<span class="k">if</span> nota = <span class="n">10</span>:\n    <span class="f">print</span>(<span class="s">"¡Excelente!"</span>)', a:"Para comparar se usa <code>==</code>. Un solo <code>=</code> asigna."},
+    {q:"Encontrá el error.", code:'<span class="k">def</span> <span class="f">saludar</span>():\n<span class="f">print</span>(<span class="s">"Hola"</span>)', a:"Falta la sangría: el <code>print</code> tiene que estar adentro de la función."},
+  ],
+  vf:[
+    {q:"Para programar hay que ser un genio de las matemáticas.", a:"<b>Falso.</b> Se necesita lógica, paciencia y práctica. Todo eso se entrena."},
+    {q:"En la mayoría de los lenguajes, las listas empiezan en la posición 0.", a:"<b>Verdadero.</b> El primer elemento es el 0."},
+    {q:"El mismo algoritmo se puede escribir en distintos lenguajes.", a:"<b>Verdadero.</b> La idea es la misma, cambia la forma de escribirla."},
+    {q:"La app del banco, los videojuegos y los lavarropas modernos tienen código adentro.", a:"<b>Verdadero.</b> Hay software en casi todo lo que usás."},
+    {q:"La computadora entiende Python tal cual lo escribimos.", a:"<b>Falso.</b> Un intérprete lo traduce a instrucciones que la máquina entiende."},
+    {q:"Un programa bien hecho nunca tiene errores.", a:"<b>Falso.</b> Todos los programas tienen bugs. Programar también es aprender a encontrarlos."},
+  ],
+  lang:[
+    {q:"¿En qué lenguaje está escrito esto?", code:'console.<span class="f">log</span>(<span class="s">"Hola mundo"</span>);', a:"<b>JavaScript.</b> Es el lenguaje que hace interactivas las páginas web."},
+    {q:"¿En qué lenguaje está escrito esto?", code:'System.out.<span class="f">println</span>(<span class="s">"Hola mundo"</span>);', a:"<b>Java.</b> Muy usado en sistemas empresariales y apps Android."},
+    {q:"¿En qué lenguaje está escrito esto?", code:'<span class="k">SELECT</span> nombre <span class="k">FROM</span> alumnos <span class="k">WHERE</span> nota >= <span class="n">6</span>;', a:"<b>SQL.</b> Sirve para consultar bases de datos."},
+    {q:"¿En qué lenguaje está escrito esto?", code:'<span class="f">print</span>(<span class="s">"Hola mundo"</span>)', a:"<b>Python.</b> Uno de los más elegidos para empezar a programar."},
+    {q:"¿Esto es un lenguaje de programación?", code:'<span class="k">&lt;h1&gt;</span>Hola mundo<span class="k">&lt;/h1&gt;</span>', a:"<b>Es HTML</b>, un lenguaje de marcado: arma la estructura de una página, pero no tiene lógica propia."},
+  ],
+  logica:[
+    {q:"Si 3 programadores hacen 3 programas en 3 minutos, ¿cuánto tardan 100 programadores en hacer 100 programas?", a:"<b>3 minutos.</b> Cada programador hace un programa en 3 minutos."},
+    {q:"¿Qué número sigue? 1, 2, 4, 8, 16…", a:"<b>32.</b> Son potencias de 2, las mismas que aparecen en la memoria de las computadoras."},
+    {q:"Un robot solo sabe avanzar y girar a la derecha. ¿Cómo hace para girar a la izquierda?", a:"<b>Girando 3 veces a la derecha.</b> Con pocas instrucciones se puede hacer mucho."},
+    {q:"Tenés una balanza y 8 monedas iguales, pero una pesa un poquito más. ¿Cuántas pesadas necesitás como mínimo para encontrarla?", a:"<b>2 pesadas.</b> Dividís en grupos de 3, 3 y 2. Pensar así se llama diseñar un algoritmo."},
+    {q:"¿Cuánto es 5 en binario?", a:"<b>101.</b> 1 × 4 + 0 × 2 + 1 × 1 = 5."},
+  ],
+  compu:[
+    {q:"Seguí el código como si fueras la computadora. ¿Cuánto vale x al final?", code:'x = <span class="n">2</span>\nx = x * <span class="n">3</span>\nx = x + <span class="n">4</span>', a:"<code>10</code>. Primero 2, después 6, al final 10."},
+    {q:"¿Cuántas veces se imprime “Hola”?", code:'<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="n">4</span>):\n    <span class="f">print</span>(<span class="s">"Hola"</span>)', a:"<b>4 veces.</b> <code>range(4)</code> recorre 0, 1, 2 y 3."},
+    {q:"¿Qué mensaje aparece?", code:'temperatura = <span class="n">35</span>\n<span class="k">if</span> temperatura > <span class="n">30</span>:\n    <span class="f">print</span>(<span class="s">"¡A la pileta!"</span>)\n<span class="k">else</span>:\n    <span class="f">print</span>(<span class="s">"Traé campera"</span>)', a:"<b>¡A la pileta!</b> 35 es mayor que 30, así que entra por el <code>if</code>."},
+    {q:"Si dejamos este programa andando, ¿cuándo termina?", code:'<span class="k">while</span> <span class="k">True</span>:\n    <span class="f">print</span>(<span class="s">"¿Ya llegamos?"</span>)', a:"<b>Nunca.</b> Es un bucle infinito: la condición siempre es verdadera."},
+    {q:"¿Qué valores tienen a y b al final?", code:'a = <span class="n">5</span>\nb = <span class="n">8</span>\na, b = b, a', a:"<code>a = 8</code> y <code>b = 5</code>. Intercambiamos los valores en una sola línea."},
+  ],
+  dato:[
+    {q:"El primer “bug” de la historia fue un insecto de verdad.", a:"En 1947 encontraron una polilla atrapada en la computadora Harvard Mark II. La pegaron en el cuaderno de registro."},
+    {q:"Python no se llama así por la serpiente.", a:"Su creador, Guido van Rossum, lo nombró por el grupo de humor británico Monty Python."},
+    {q:"El primer algoritmo para una máquina lo escribió una mujer.", a:"Ada Lovelace lo publicó en 1843, más de cien años antes de las computadoras modernas."},
+    {q:"Una computadora solo entiende ceros y unos.", a:"Todo lo que ves en pantalla (fotos, música, juegos) termina representado en binario."},
+  ],
+  reto:[
+    {q:"Explicá cómo preparar un mate como si fuera un algoritmo, paso a paso.", a:"¡Eso es programar! Dar instrucciones claras, en orden, sin saltear pasos."},
+    {q:"Dale instrucciones a alguien para que dibuje un cuadrado sin decir la palabra “cuadrado”.", a:"Así piensa un programador: la computadora solo hace exactamente lo que le decís."},
+    {q:"Nombrá 3 apps que uses todos los días.", a:"Las tres las programó alguien. Podrías ser vos el próximo."},
+    {q:"¿Qué app o juego te gustaría inventar? Contalo en una frase.", a:"Toda app empieza como una idea. En la carrera aprendés a construirla."},
+  ],
+};
+
+const used = {};
+function pick(id){
+  const list = BANK[id];
+  used[id] = used[id] && used[id].length < list.length ? used[id] : [];
+  const free = list.map((_,i)=>i).filter(i=>!used[id].includes(i));
+  const i = free[Math.floor(Math.random()*free.length)];
+  used[id].push(i);
+  return list[i];
+}
+
+/* ---------- wheel ---------- */
+const cv = document.getElementById("wheel"), ctx = cv.getContext("2d");
+const N = CATS.length, SEG = 2*Math.PI/N;
+let rot = 0, spinning = false;
+const fontsReady = document.fonts ? document.fonts.ready : Promise.resolve();
+
+function draw(){
+  const s = cv.width, r = s/2 - 14, cx = s/2, cy = s/2;
+  ctx.clearRect(0,0,s,s);
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(rot);
+  for(let i=0;i<N;i++){
+    const a0 = -Math.PI/2 + i*SEG;
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,r,a0,a0+SEG); ctx.closePath();
+    ctx.fillStyle = C(CATS[i].color); ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = C("--bg"); ctx.stroke();
+    ctx.save(); ctx.rotate(a0+SEG/2);
+    ctx.fillStyle = "#14102a"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.font = "800 52px 'Bricolage Grotesque', system-ui, sans-serif";
+    ctx.fillText(CATS[i].label, r-40, 0);
+    ctx.restore();
+  }
+  // rim dots
+  for(let i=0;i<N*3;i++){
+    const a = i*SEG/3; ctx.beginPath();
+    ctx.arc(Math.cos(a)*(r+2), Math.sin(a)*(r+2), 7, 0, 2*Math.PI);
+    ctx.fillStyle = C("--ink"); ctx.fill();
+  }
+  ctx.restore();
+}
+fontsReady.then(draw); draw();
+
+/* ---------- sound ---------- */
+let ac = null, soundOn = true;
+function tick(f=900,d=.03,v=.06){
+  if(!soundOn) return;
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.frequency.value = f; o.type = "square"; g.gain.value = v;
+    o.connect(g); g.connect(ac.destination);
+    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d);
+    o.start(); o.stop(ac.currentTime + d);
+  }catch(e){}
+}
+function fanfare(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tick(f,.18,.08),i*110)); }
+
+/* ---------- spin ---------- */
+let count = 0;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function spin(){
+  if(spinning) return;
+  spinning = true; spinBtn.disabled = true;
+  const target = Math.floor(Math.random()*N);
+  // angle so the target segment's center sits under the top pointer
+  const jitter = (Math.random()-.5)*SEG*.7;
+  const base = -(target*SEG + SEG/2) + jitter;
+  const start = rot;
+  let end = base; while(end < start) end += 2*Math.PI;
+  end += 2*Math.PI*(reduce ? 1 : 6 + Math.floor(Math.random()*2));
+  const dur = reduce ? 600 : 4800 + Math.random()*800;
+  const t0 = performance.now();
+  let lastSeg = -1;
+  function frame(t){
+    const p = Math.min(1,(t-t0)/dur);
+    const e = 1 - Math.pow(1-p, 4);
+    rot = start + (end-start)*e;
+    draw();
+    const seg = Math.floor(((rot % (2*Math.PI)) + 2*Math.PI) / SEG);
+    if(seg !== lastSeg){ tick(); lastSeg = seg; }
+    if(p < 1) requestAnimationFrame(frame);
+    else { spinning = false; spinBtn.disabled = false; show(target); }
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- card ---------- */
+const card = document.getElementById("card");
+function show(i){
+  const cat = CATS[i], item = pick(cat.id);
+  count++; document.getElementById("count").textContent = count + (count===1?" giro":" giros");
+  const col = `var(${cat.color})`;
+  card.style.setProperty("--c", col);
+  const isFact = cat.id === "dato";
+  card.innerHTML = `
+    <span class="chip" style="--c:${col}">${cat.label}</span>
+    <h2>${item.q}</h2>
+    ${item.code ? `<pre>${item.code}</pre>` : ""}
+    ${isFact
+      ? `<div class="answer"><strong>Sabías que…</strong><div>${item.a}</div></div>`
+      : `<button class="reveal" id="rev">Ver respuesta</button>
+         <div class="answer" id="ans" hidden><strong>Respuesta</strong><div>${item.a}</div></div>`}
+  `;
+  card.classList.remove("pop"); void card.offsetWidth; card.classList.add("pop");
+  const rev = document.getElementById("rev");
+  if(rev) rev.onclick = reveal;
+  tick(660,.12,.07);
+}
+function reveal(){
+  const ans = document.getElementById("ans"), rev = document.getElementById("rev");
+  if(ans && ans.hidden){ ans.hidden = false; rev.hidden = true; fanfare(); confetti(); }
+}
+
+/* ---------- confetti ---------- */
+const cf = document.getElementById("confetti"), cx2 = cf.getContext("2d");
+function confetti(){
+  if(reduce) return;
+  cf.width = innerWidth; cf.height = innerHeight;
+  const cols = CATS.map(c=>C(c.color));
+  const ps = Array.from({length:160},()=>({x:innerWidth/2,y:innerHeight/3,vx:(Math.random()-.5)*16,vy:Math.random()*-14-4,s:6+Math.random()*8,c:cols[Math.floor(Math.random()*cols.length)],r:Math.random()*6}));
+  const t0 = performance.now();
+  (function f(t){
+    cx2.clearRect(0,0,cf.width,cf.height);
+    ps.forEach(p=>{p.vy+=.35;p.x+=p.vx;p.y+=p.vy;p.r+=.2;cx2.save();cx2.translate(p.x,p.y);cx2.rotate(p.r);cx2.fillStyle=p.c;cx2.fillRect(-p.s/2,-p.s/4,p.s,p.s/2);cx2.restore();});
+    if(t-t0 < 3200) requestAnimationFrame(f); else cx2.clearRect(0,0,cf.width,cf.height);
+  })(t0);
+}
+
+/* ---------- controls ---------- */
+const spinBtn = document.getElementById("spin");
+spinBtn.onclick = spin;
+const hub = document.getElementById("hub");
+hub.onclick = spin;
+hub.onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); spin(); } };
+document.addEventListener("keydown", e=>{
+  if(e.code==="Space" && e.target.tagName!=="BUTTON"){ e.preventDefault(); spin(); }
+  else if(e.key==="Enter"){
+    const rev = document.getElementById("rev");
+    if(rev && !rev.hidden && !spinning){ e.preventDefault(); reveal(); }
+  }
+});
+const sb = document.getElementById("sound");
+sb.onclick = ()=>{ soundOn=!soundOn; sb.textContent="Sonido: "+(soundOn?"sí":"no"); sb.setAttribute("aria-pressed",soundOn); };
+document.getElementById("fs").onclick = ()=>{
+  try{
+    if(document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen().catch(()=>{});
+  }catch(e){}
+};
+</script>
+</body>
+</html>
